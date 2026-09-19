@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace UpCore\Modules\LoginThrottle;
 
 use UpCore\Module;
+use UpCore\Stats;
 use WP_Error;
 
 final class LoginThrottleModule extends Module
@@ -40,6 +41,15 @@ final class LoginThrottleModule extends Module
         return self::STATUS_READY;
     }
 
+    public function metrics(): array
+    {
+        return [
+            'blocked_login' => __('Tentativas de login bloqueadas (rate limit)', 'upcore'),
+            'blocked_reset' => __('Recuperacoes de senha bloqueadas (rate limit)', 'upcore'),
+            'failed_attempts' => __('Tentativas de login com credenciais invalidas', 'upcore'),
+        ];
+    }
+
     public function register(): void
     {
         // Prioridade 30: roda depois de wp_authenticate_username_password (20),
@@ -57,6 +67,8 @@ final class LoginThrottleModule extends Module
     public function block_login_if_locked_out($user)
     {
         if ($this->is_locked_out($this->login_key())) {
+            Stats::record($this->slug(), 'blocked_login');
+
             return new WP_Error(
                 'upcore_too_many_attempts',
                 __('Muitas tentativas de login. Tente novamente em alguns minutos.', 'upcore')
@@ -68,6 +80,7 @@ final class LoginThrottleModule extends Module
 
     public function register_failed_login(string $username): void
     {
+        Stats::record($this->slug(), 'failed_attempts');
         $this->register_attempt($this->login_key(), self::LOGIN_LOCKOUT_WINDOW);
     }
 
@@ -77,6 +90,8 @@ final class LoginThrottleModule extends Module
     public function guard_password_reset(WP_Error $errors, $user_data = null): void
     {
         if ($this->is_locked_out($this->reset_key())) {
+            Stats::record($this->slug(), 'blocked_reset');
+
             $errors->add(
                 'upcore_too_many_reset_attempts',
                 __('Muitas solicitacoes de recuperacao de senha. Tente novamente mais tarde.', 'upcore')

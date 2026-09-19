@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace UpCore\Modules\Captcha;
 
 use UpCore\Module;
+use UpCore\Stats;
 use WP_Error;
 
 final class CaptchaModule extends Module
@@ -24,7 +25,7 @@ final class CaptchaModule extends Module
 
     public function description(): string
     {
-        return __('Adiciona reCAPTCHA v3 (invisivel) no login, recuperacao de senha e cadastro. Exige as constantes UPCORE_RECAPTCHA_SITE_KEY e UPCORE_RECAPTCHA_SECRET_KEY no wp-config.php do projeto; sem elas o modulo fica inerte.', 'upcore');
+        return __('Adiciona reCAPTCHA v3 (invisivel) no login, recuperacao de senha e cadastro. Preencha a site key e a secret key abaixo (ou defina UPCORE_RECAPTCHA_SITE_KEY/UPCORE_RECAPTCHA_SECRET_KEY no wp-config.php); sem isso o modulo fica inerte.', 'upcore');
     }
 
     public function category(): string
@@ -35,6 +36,29 @@ final class CaptchaModule extends Module
     public function status(): string
     {
         return self::STATUS_READY;
+    }
+
+    public function fields(): array
+    {
+        return [
+            'site_key' => [
+                'label' => __('Site Key', 'upcore'),
+                'type' => 'text',
+                'description' => __('Site key do reCAPTCHA v3 (google.com/recaptcha/admin).', 'upcore'),
+            ],
+            'secret_key' => [
+                'label' => __('Secret Key', 'upcore'),
+                'type' => 'password',
+                'description' => __('Secret key do reCAPTCHA v3.', 'upcore'),
+            ],
+        ];
+    }
+
+    public function metrics(): array
+    {
+        return [
+            'failed' => __('Verificacoes de CAPTCHA reprovadas', 'upcore'),
+        ];
     }
 
     public function register(): void
@@ -88,6 +112,8 @@ final class CaptchaModule extends Module
             return $user;
         }
 
+        Stats::record($this->slug(), 'failed');
+
         return new WP_Error(
             'upcore_recaptcha_failed',
             __('Nao foi possivel validar o CAPTCHA. Tente novamente.', 'upcore')
@@ -100,6 +126,8 @@ final class CaptchaModule extends Module
     public function guard_password_reset(WP_Error $errors, $user_data = null): void
     {
         if (! $this->verify_token($this->submitted_token())) {
+            Stats::record($this->slug(), 'failed');
+
             $errors->add(
                 'upcore_recaptcha_failed',
                 __('Nao foi possivel validar o CAPTCHA. Tente novamente.', 'upcore')
@@ -110,6 +138,8 @@ final class CaptchaModule extends Module
     public function guard_registration(WP_Error $errors, string $sanitized_user_login, string $user_email): WP_Error
     {
         if (! $this->verify_token($this->submitted_token())) {
+            Stats::record($this->slug(), 'failed');
+
             $errors->add(
                 'upcore_recaptcha_failed',
                 __('Nao foi possivel validar o CAPTCHA. Tente novamente.', 'upcore')
@@ -191,12 +221,20 @@ JS;
 
     private function site_key(): string
     {
-        return defined('UPCORE_RECAPTCHA_SITE_KEY') ? (string) UPCORE_RECAPTCHA_SITE_KEY : '';
+        if (defined('UPCORE_RECAPTCHA_SITE_KEY') && UPCORE_RECAPTCHA_SITE_KEY !== '') {
+            return (string) UPCORE_RECAPTCHA_SITE_KEY;
+        }
+
+        return $this->config('site_key');
     }
 
     private function secret_key(): string
     {
-        return defined('UPCORE_RECAPTCHA_SECRET_KEY') ? (string) UPCORE_RECAPTCHA_SECRET_KEY : '';
+        if (defined('UPCORE_RECAPTCHA_SECRET_KEY') && UPCORE_RECAPTCHA_SECRET_KEY !== '') {
+            return (string) UPCORE_RECAPTCHA_SECRET_KEY;
+        }
+
+        return $this->config('secret_key');
     }
 
     private function threshold(): float

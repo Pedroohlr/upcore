@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace UpCore\Modules\LoginUrl;
 
 use UpCore\Module;
+use UpCore\Stats;
 
 final class LoginUrlModule extends Module
 {
@@ -37,6 +38,28 @@ final class LoginUrlModule extends Module
     public function status(): string
     {
         return self::STATUS_READY;
+    }
+
+    public function fields(): array
+    {
+        return [
+            'slug' => [
+                'label' => __('Slug de login', 'upcore'),
+                'type' => 'text',
+                'description' => sprintf(
+                    /* translators: %s: default login slug */
+                    __('Sem barras. Padrao: %s.', 'upcore'),
+                    self::DEFAULT_SLUG
+                ),
+            ],
+        ];
+    }
+
+    public function metrics(): array
+    {
+        return [
+            'blocked_direct_access' => __('Acessos diretos a wp-login.php bloqueados', 'upcore'),
+        ];
     }
 
     public function register(): void
@@ -96,6 +119,7 @@ final class LoginUrlModule extends Module
 
     private function block_direct_access(): void
     {
+        Stats::record($this->slug(), 'blocked_direct_access');
         status_header(404);
         nocache_headers();
         wp_die(__('Pagina nao encontrada.', 'upcore'), '', ['response' => 404]);
@@ -119,7 +143,9 @@ final class LoginUrlModule extends Module
             return trim(UPCORE_LOGIN_SLUG, '/');
         }
 
-        return self::DEFAULT_SLUG;
+        $configured = $this->config('slug');
+
+        return $configured !== '' ? trim($configured, '/') : self::DEFAULT_SLUG;
     }
 
     private function is_disabled_by_override(): bool

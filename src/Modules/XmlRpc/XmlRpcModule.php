@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace UpCore\Modules\XmlRpc;
 
 use UpCore\Module;
+use UpCore\Stats;
 
 final class XmlRpcModule extends Module
 {
@@ -33,6 +34,13 @@ final class XmlRpcModule extends Module
         return self::STATUS_READY;
     }
 
+    public function metrics(): array
+    {
+        return [
+            'blocked' => __('Requisicoes XML-RPC bloqueadas', 'upcore'),
+        ];
+    }
+
     public function register(): void
     {
         add_action('init', [$this, 'maybe_block_request'], 0);
@@ -50,6 +58,7 @@ final class XmlRpcModule extends Module
         }
 
         if (defined('XMLRPC_REQUEST') && XMLRPC_REQUEST) {
+            Stats::record($this->slug(), 'blocked');
             status_header(403);
             nocache_headers();
             exit;

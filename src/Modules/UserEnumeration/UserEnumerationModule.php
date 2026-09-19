@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace UpCore\Modules\UserEnumeration;
 
 use UpCore\Module;
+use UpCore\Stats;
 use WP_Error;
 use WP_HTTP_Response;
 use WP_REST_Request;
@@ -36,9 +37,20 @@ final class UserEnumerationModule extends Module
         return self::STATUS_READY;
     }
 
+    public function metrics(): array
+    {
+        return [
+            'blocked_author_query' => __('Tentativas de ?author=N bloqueadas', 'upcore'),
+            'blocked_rest' => __('Listagens de /wp/v2/users bloqueadas', 'upcore'),
+        ];
+    }
+
     public function register(): void
     {
-        add_action('template_redirect', [$this, 'block_author_query']);
+        // Prioridade 1: precisa rodar antes de redirect_canonical() (prioridade
+        // padrao 10), senao o proprio WP ja revela o slug do usuario no header
+        // Location antes do nosso bloqueio ter a chance de agir.
+        add_action('template_redirect', [$this, 'block_author_query'], 1);
         add_filter('rest_request_before_callbacks', [$this, 'restrict_users_collection'], 10, 3);
         add_filter('login_errors', [$this, 'generic_login_error']);
     }
@@ -49,6 +61,7 @@ final class UserEnumerationModule extends Module
             return;
         }
 
+        Stats::record($this->slug(), 'blocked_author_query');
         wp_safe_redirect(home_url('/'), 301);
         exit;
     }
@@ -71,6 +84,8 @@ final class UserEnumerationModule extends Module
         if (is_user_logged_in()) {
             return $response;
         }
+
+        Stats::record($this->slug(), 'blocked_rest');
 
         return new WP_Error(
             'upcore_rest_forbidden',

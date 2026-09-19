@@ -2,16 +2,16 @@ import apiFetch from '@wordpress/api-fetch';
 
 const REST_URL = window.upcoreAdmin?.restUrl ?? '';
 
-apiFetch.use(apiFetch.createNonceMiddleware(window.upcoreAdmin?.nonce ?? ''));
+apiFetch.use( apiFetch.createNonceMiddleware( window.upcoreAdmin?.nonce ?? '' ) );
 
 export function fetchModules() {
-	return apiFetch({ url: `${ REST_URL }/modules` });
+	return apiFetch( { url: `${ REST_URL }/modules` } );
 }
 
-export function updateModule( slug, enabled ) {
+export function updateModule( slug, changes ) {
 	return apiFetch( {
 		url: `${ REST_URL }/modules/${ slug }`,
 		method: 'POST',
-		data: { enabled },
+		data: changes,
 	} );
 }

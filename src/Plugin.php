@@ -40,24 +40,26 @@ final class Plugin
     private function default_modules(): array
     {
         return [
-            new CommentsModule(),
-            new XmlRpcModule(),
-            new CaptchaModule(),
-            new LoginUrlModule(),
-            new LoginThrottleModule(),
-            new HardeningModule(),
-            new ApplicationPasswordsModule(),
-            new UserEnumerationModule(),
-            new CoreCleanupModule(),
-            new HeartbeatModule(),
-            new RevisionsModule(),
-            new FrontendAssetsModule(),
-            new CronModule(),
+            new CommentsModule($this->settings),
+            new XmlRpcModule($this->settings),
+            new CaptchaModule($this->settings),
+            new LoginUrlModule($this->settings),
+            new LoginThrottleModule($this->settings),
+            new HardeningModule($this->settings),
+            new ApplicationPasswordsModule($this->settings),
+            new UserEnumerationModule($this->settings),
+            new CoreCleanupModule($this->settings),
+            new HeartbeatModule($this->settings),
+            new RevisionsModule($this->settings),
+            new FrontendAssetsModule($this->settings),
+            new CronModule($this->settings),
         ];
     }
 
     public function boot(): void
     {
+        Stats::maybe_install();
+
         $this->modules->boot($this->settings);
 
         add_action('rest_api_init', function (): void {
