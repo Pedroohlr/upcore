@@ -30,18 +30,29 @@ npm run start            # build com watch, para desenvolvimento
 
 ## Status dos modulos
 
-| Modulo | Categoria | Status |
-| --- | --- | --- |
-| Comentarios | Seguranca | Pronto |
-| XML-RPC | Seguranca | Planejado |
-| CAPTCHA | Seguranca | Planejado |
-| URL de login personalizada | Seguranca | Planejado |
-| Limite de tentativas de login | Seguranca | Planejado |
-| Hardening basico | Seguranca | Pronto |
-| Application Passwords | Seguranca | Pronto |
-| Enumeracao de usuarios | Seguranca | Planejado |
-| Limpeza de recursos do core | Performance | Planejado |
-| Heartbeat API | Performance | Planejado |
-| Limite de revisoes | Performance | Pronto |
-| Assets do core no front-end | Performance | Planejado |
-| WP-Cron | Performance | Planejado |
+Todos os 13 modulos do baseline estao implementados. Alguns dependem de configuracao
+por projeto via constantes no `wp-config.php` (ver coluna "Configuracao").
+
+| Modulo | Categoria | Status | Configuracao |
+| --- | --- | --- | --- |
+| Comentarios | Seguranca | Pronto | - |
+| XML-RPC | Seguranca | Pronto | `UPCORE_XMLRPC_ALLOWED` para reativar por projeto |
+| CAPTCHA | Seguranca | Pronto | Exige `UPCORE_RECAPTCHA_SITE_KEY` e `UPCORE_RECAPTCHA_SECRET_KEY`; sem elas fica inerte |
+| URL de login personalizada | Seguranca | Pronto | `UPCORE_LOGIN_SLUG` (padrao `gerenciar`), `UPCORE_LOGIN_URL_DISABLED` como valvula de emergencia |
+| Limite de tentativas de login | Seguranca | Pronto | Filtro `upcore_login_throttle_client_ip` para projetos atras de proxy/CDN |
+| Hardening basico | Seguranca | Pronto | - |
+| Application Passwords | Seguranca | Pronto | - |
+| Enumeracao de usuarios | Seguranca | Pronto | - |
+| Limpeza de recursos do core | Performance | Pronto | - |
+| Heartbeat API | Performance | Pronto | - |
+| Limite de revisoes | Performance | Pronto | - |
+| Assets do core no front-end | Performance | Pronto | Escopo atual: so jquery-migrate |
+| WP-Cron | Performance | Pronto | Exige cron de sistema real configurado na hospedagem |
+
+## Cuidado especial: URL de login personalizada
+
+Esse e o modulo de maior risco (pode travar o acesso ao painel se algo der errado).
+Antes de ativar em producao, teste manualmente: login, logout, "esqueci minha senha"
+e, se o projeto usar WooCommerce, a pagina de conta do cliente. Em caso de bloqueio,
+adicione `define('UPCORE_LOGIN_URL_DISABLED', true);` no `wp-config.php` para restaurar
+o `/wp-login.php` padrao sem depender do painel.

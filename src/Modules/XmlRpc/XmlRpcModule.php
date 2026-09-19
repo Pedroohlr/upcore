@@ -20,7 +20,7 @@ final class XmlRpcModule extends Module
 
     public function description(): string
     {
-        return __('Bloqueia o xmlrpc.php por padrao, com opcao de reativar por projeto.', 'upcore');
+        return __('Bloqueia o xmlrpc.php por padrao. Pode ser reativado por projeto definindo a constante UPCORE_XMLRPC_ALLOWED como true.', 'upcore');
     }
 
     public function category(): string
@@ -30,12 +30,45 @@ final class XmlRpcModule extends Module
 
     public function status(): string
     {
-        return self::STATUS_PLANNED;
+        return self::STATUS_READY;
     }
 
     public function register(): void
     {
-        // TODO(upcore): interceptar em plugins_loaded/init verificando XMLRPC_REQUEST
-        // e responder 403 antes do bootstrap completo do WP.
+        add_action('init', [$this, 'maybe_block_request'], 0);
+
+        remove_action('wp_head', 'rsd_link');
+        remove_action('wp_head', 'wlwmanifest_link');
+
+        add_filter('wp_headers', [$this, 'remove_pingback_header']);
+    }
+
+    public function maybe_block_request(): void
+    {
+        if ($this->is_allowed_by_override()) {
+            return;
+        }
+
+        if (defined('XMLRPC_REQUEST') && XMLRPC_REQUEST) {
+            status_header(403);
+            nocache_headers();
+            exit;
+        }
+    }
+
+    /**
+     * @param array<string, string> $headers
+     * @return array<string, string>
+     */
+    public function remove_pingback_header(array $headers): array
+    {
+        unset($headers['X-Pingback']);
+
+        return $headers;
+    }
+
+    private function is_allowed_by_override(): bool
+    {
+        return defined('UPCORE_XMLRPC_ALLOWED') && UPCORE_XMLRPC_ALLOWED === true;
     }
 }

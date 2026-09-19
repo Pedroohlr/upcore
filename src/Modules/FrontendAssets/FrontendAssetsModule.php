@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace UpCore\Modules\FrontendAssets;
 
 use UpCore\Module;
+use WP_Scripts;
 
 final class FrontendAssetsModule extends Module
 {
@@ -20,7 +21,7 @@ final class FrontendAssetsModule extends Module
 
     public function description(): string
     {
-        return __('Remove CSS/JS do core desnecessarios no front (block-library, jquery-migrate, wp-embed) quando o tema nao depende deles.', 'upcore');
+        return __('Remove jquery-migrate da dependencia do jQuery no front-end. Outras otimizacoes (block-library, code splitting) ficam fora do MU-plugin: dependem do build do tema.', 'upcore');
     }
 
     public function category(): string
@@ -30,12 +31,23 @@ final class FrontendAssetsModule extends Module
 
     public function status(): string
     {
-        return self::STATUS_PLANNED;
+        return self::STATUS_READY;
     }
 
     public function register(): void
     {
-        // TODO(upcore): dequeue condicional via wp_enqueue_scripts, nunca global
-        // sem checagem (WooCommerce e outros plugins podem depender de jQuery).
+        add_action('wp_default_scripts', [$this, 'remove_jquery_migrate']);
+    }
+
+    public function remove_jquery_migrate(WP_Scripts $scripts): void
+    {
+        if (is_admin() || ! isset($scripts->registered['jquery'])) {
+            return;
+        }
+
+        $scripts->registered['jquery']->deps = array_diff(
+            $scripts->registered['jquery']->deps,
+            ['jquery-migrate']
+        );
     }
 }

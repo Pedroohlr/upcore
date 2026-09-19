@@ -20,7 +20,7 @@ final class CronModule extends Module
 
     public function description(): string
     {
-        return __('Desativa o pseudo-cron disparado por visita e assume um cron de sistema real configurado na hospedagem.', 'upcore');
+        return __('Desativa o pseudo-cron disparado por visita (DISABLE_WP_CRON). So habilite depois de configurar um cron de sistema real batendo em wp-cron.php, senao os agendamentos param de rodar.', 'upcore');
     }
 
     public function category(): string
@@ -30,12 +30,13 @@ final class CronModule extends Module
 
     public function status(): string
     {
-        return self::STATUS_PLANNED;
+        return self::STATUS_READY;
     }
 
     public function register(): void
     {
-        // TODO(upcore): define('DISABLE_WP_CRON', true) + documentar cron de
-        // sistema necessario no checklist de deploy.
+        if (! defined('DISABLE_WP_CRON')) {
+            define('DISABLE_WP_CRON', true);
+        }
     }
 }
