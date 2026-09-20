@@ -51,6 +51,27 @@ final class CaptchaModule extends Module
                 'type' => 'password',
                 'description' => __('Secret key do reCAPTCHA v3.', 'upcore'),
             ],
+            'threshold' => [
+                'label' => __('Pontuacao minima (0 a 1)', 'upcore'),
+                'type' => 'number',
+                'description' => __('Padrao 0.5. Quanto mais alto, mais rigoroso (e mais falso positivo).', 'upcore'),
+                'default' => self::DEFAULT_THRESHOLD,
+            ],
+            'protect_login' => [
+                'label' => __('Proteger login', 'upcore'),
+                'type' => 'checkbox',
+                'default' => true,
+            ],
+            'protect_lostpassword' => [
+                'label' => __('Proteger recuperacao de senha', 'upcore'),
+                'type' => 'checkbox',
+                'default' => true,
+            ],
+            'protect_register' => [
+                'label' => __('Proteger cadastro', 'upcore'),
+                'type' => 'checkbox',
+                'default' => true,
+            ],
         ];
     }
 
@@ -68,16 +89,31 @@ final class CaptchaModule extends Module
         }
 
         add_action('login_enqueue_scripts', [$this, 'enqueue_recaptcha']);
-        add_action('login_form', [$this, 'render_hidden_field']);
-        add_action('lostpassword_form', [$this, 'render_hidden_field']);
-        add_action('register_form', [$this, 'render_hidden_field']);
 
-        // Prioridade 25: depois de wp_authenticate_username_password (20), para
-        // nao ser ignorado por ele (callbacks do core nao respeitam um WP_Error
-        // recebido de um filtro anterior e seguem checando a senha).
-        add_filter('authenticate', [$this, 'block_if_captcha_invalid'], 25);
-        add_action('lostpassword_post', [$this, 'guard_password_reset'], 10, 2);
-        add_filter('registration_errors', [$this, 'guard_registration'], 10, 3);
+        if ($this->protects('protect_login')) {
+            add_action('login_form', [$this, 'render_hidden_field']);
+
+            // Prioridade 25: depois de wp_authenticate_username_password (20),
+            // para nao ser ignorado por ele (callbacks do core nao respeitam
+            // um WP_Error recebido de um filtro anterior e seguem checando a
+            // senha mesmo assim).
+            add_filter('authenticate', [$this, 'block_if_captcha_invalid'], 25);
+        }
+
+        if ($this->protects('protect_lostpassword')) {
+            add_action('lostpassword_form', [$this, 'render_hidden_field']);
+            add_action('lostpassword_post', [$this, 'guard_password_reset'], 10, 2);
+        }
+
+        if ($this->protects('protect_register')) {
+            add_action('register_form', [$this, 'render_hidden_field']);
+            add_filter('registration_errors', [$this, 'guard_registration'], 10, 3);
+        }
+    }
+
+    private function protects(string $key): bool
+    {
+        return (bool) $this->field($key);
     }
 
     public function enqueue_recaptcha(): void
@@ -225,7 +261,7 @@ JS;
             return (string) UPCORE_RECAPTCHA_SITE_KEY;
         }
 
-        return $this->config('site_key');
+        return (string) $this->field('site_key');
     }
 
     private function secret_key(): string
@@ -234,11 +270,17 @@ JS;
             return (string) UPCORE_RECAPTCHA_SECRET_KEY;
         }
 
-        return $this->config('secret_key');
+        return (string) $this->field('secret_key');
     }
 
     private function threshold(): float
     {
-        return defined('UPCORE_RECAPTCHA_THRESHOLD') ? (float) UPCORE_RECAPTCHA_THRESHOLD : self::DEFAULT_THRESHOLD;
+        if (defined('UPCORE_RECAPTCHA_THRESHOLD')) {
+            return (float) UPCORE_RECAPTCHA_THRESHOLD;
+        }
+
+        $value = $this->field('threshold');
+
+        return is_numeric($value) ? (float) $value : self::DEFAULT_THRESHOLD;
     }
 }

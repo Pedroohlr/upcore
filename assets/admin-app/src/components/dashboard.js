@@ -16,6 +16,7 @@ function collectHighlights( modules ) {
 					label: stat.label,
 					count: stat.count,
 					moduleLabel: module.label,
+					moduleSlug: module.slug,
 				} );
 			}
 		} );
@@ -24,7 +25,7 @@ function collectHighlights( modules ) {
 	return highlights.sort( ( a, b ) => b.count - a.count ).slice( 0, 6 );
 }
 
-export default function Dashboard( { modules } ) {
+export default function Dashboard( { modules, onSelect } ) {
 	const security = countByCategory( modules, 'security' );
 	const performance = countByCategory( modules, 'performance' );
 	const highlights = collectHighlights( modules );
@@ -61,7 +62,12 @@ export default function Dashboard( { modules } ) {
 				{ highlights.length > 0 && (
 					<div className="upcore-module-list">
 						{ highlights.map( ( item ) => (
-							<div className="upcore-stat-row" key={ item.key }>
+							<button
+								type="button"
+								className="upcore-stat-row"
+								key={ item.key }
+								onClick={ () => onSelect( item.moduleSlug ) }
+							>
 								<span className="upcore-stat-row__label">
 									{ item.label }
 									<span className="upcore-stat-row__module">
@@ -71,7 +77,7 @@ export default function Dashboard( { modules } ) {
 								<span className="upcore-stat-row__count">
 									{ item.count }
 								</span>
-							</div>
+							</button>
 						) ) }
 					</div>
 				) }

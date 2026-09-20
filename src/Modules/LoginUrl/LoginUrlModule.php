@@ -46,11 +46,14 @@ final class LoginUrlModule extends Module
             'slug' => [
                 'label' => __('Slug de login', 'upcore'),
                 'type' => 'text',
-                'description' => sprintf(
-                    /* translators: %s: default login slug */
-                    __('Sem barras. Padrao: %s.', 'upcore'),
-                    self::DEFAULT_SLUG
-                ),
+                'description' => __('Sem barras.', 'upcore'),
+                'default' => self::DEFAULT_SLUG,
+            ],
+            'allow_direct_access' => [
+                'label' => __('Permitir acesso direto a wp-login.php mesmo assim', 'upcore'),
+                'type' => 'checkbox',
+                'description' => __('Desativa o bloqueio do endpoint padrao (nao recomendado, mas util em emergencia).', 'upcore'),
+                'default' => false,
             ],
         ];
     }
@@ -103,7 +106,7 @@ final class LoginUrlModule extends Module
             return;
         }
 
-        if ($path === 'wp-login.php') {
+        if ($path === 'wp-login.php' && ! $this->allows_direct_access()) {
             $this->block_direct_access();
         }
     }
@@ -143,13 +146,16 @@ final class LoginUrlModule extends Module
             return trim(UPCORE_LOGIN_SLUG, '/');
         }
 
-        $configured = $this->config('slug');
-
-        return $configured !== '' ? trim($configured, '/') : self::DEFAULT_SLUG;
+        return trim((string) $this->field('slug'), '/');
     }
 
     private function is_disabled_by_override(): bool
     {
         return defined('UPCORE_LOGIN_URL_DISABLED') && UPCORE_LOGIN_URL_DISABLED === true;
+    }
+
+    private function allows_direct_access(): bool
+    {
+        return (bool) $this->field('allow_direct_access');
     }
 }

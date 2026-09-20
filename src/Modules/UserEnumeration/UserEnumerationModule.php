@@ -37,6 +37,28 @@ final class UserEnumerationModule extends Module
         return self::STATUS_READY;
     }
 
+    public function fields(): array
+    {
+        return [
+            'block_author_query' => [
+                'label' => __('Bloquear ?author=N', 'upcore'),
+                'type' => 'checkbox',
+                'default' => true,
+            ],
+            'block_users_rest' => [
+                'label' => __('Bloquear listagem publica de /wp/v2/users', 'upcore'),
+                'type' => 'checkbox',
+                'default' => true,
+            ],
+            'generic_login_error' => [
+                'label' => __('Mensagem de erro generica no login', 'upcore'),
+                'type' => 'checkbox',
+                'description' => __('Esconde se o erro foi de usuario ou senha incorretos.', 'upcore'),
+                'default' => true,
+            ],
+        ];
+    }
+
     public function metrics(): array
     {
         return [
@@ -47,12 +69,20 @@ final class UserEnumerationModule extends Module
 
     public function register(): void
     {
-        // Prioridade 1: precisa rodar antes de redirect_canonical() (prioridade
-        // padrao 10), senao o proprio WP ja revela o slug do usuario no header
-        // Location antes do nosso bloqueio ter a chance de agir.
-        add_action('template_redirect', [$this, 'block_author_query'], 1);
-        add_filter('rest_request_before_callbacks', [$this, 'restrict_users_collection'], 10, 3);
-        add_filter('login_errors', [$this, 'generic_login_error']);
+        if ($this->field('block_author_query')) {
+            // Prioridade 1: precisa rodar antes de redirect_canonical()
+            // (prioridade padrao 10), senao o proprio WP ja revela o slug do
+            // usuario no header Location antes do nosso bloqueio agir.
+            add_action('template_redirect', [$this, 'block_author_query'], 1);
+        }
+
+        if ($this->field('block_users_rest')) {
+            add_filter('rest_request_before_callbacks', [$this, 'restrict_users_collection'], 10, 3);
+        }
+
+        if ($this->field('generic_login_error')) {
+            add_filter('login_errors', [$this, 'generic_login_error']);
+        }
     }
 
     public function block_author_query(): void

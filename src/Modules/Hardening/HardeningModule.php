@@ -33,16 +33,41 @@ final class HardeningModule extends Module
         return self::STATUS_READY;
     }
 
+    public function fields(): array
+    {
+        return [
+            'disable_file_edit' => [
+                'label' => __('Desativar editor de arquivos do painel', 'upcore'),
+                'type' => 'checkbox',
+                'default' => true,
+            ],
+            'block_uploads_php' => [
+                'label' => __('Bloquear execucao de PHP em /uploads/', 'upcore'),
+                'type' => 'checkbox',
+                'default' => true,
+            ],
+            'hide_wp_version' => [
+                'label' => __('Remover versao do WordPress exposta no head e no RSS', 'upcore'),
+                'type' => 'checkbox',
+                'default' => true,
+            ],
+        ];
+    }
+
     public function register(): void
     {
-        if (! defined('DISALLOW_FILE_EDIT')) {
+        if ($this->field('disable_file_edit') && ! defined('DISALLOW_FILE_EDIT')) {
             define('DISALLOW_FILE_EDIT', true);
         }
 
-        add_action('admin_init', [$this, 'protect_uploads_directory']);
+        if ($this->field('block_uploads_php')) {
+            add_action('admin_init', [$this, 'protect_uploads_directory']);
+        }
 
-        remove_action('wp_head', 'wp_generator');
-        add_filter('the_generator', '__return_empty_string');
+        if ($this->field('hide_wp_version')) {
+            remove_action('wp_head', 'wp_generator');
+            add_filter('the_generator', '__return_empty_string');
+        }
     }
 
     public function protect_uploads_directory(): void

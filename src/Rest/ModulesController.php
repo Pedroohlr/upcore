@@ -108,13 +108,24 @@ final class ModulesController
      */
     private function sanitize_config(Module $module, array $submitted): array
     {
-        $allowed = array_keys($module->fields());
+        $fields = $module->fields();
         $sanitized = [];
 
         foreach ($submitted as $key => $value) {
-            if (in_array($key, $allowed, true)) {
-                $sanitized[$key] = sanitize_text_field((string) $value);
+            if (! isset($fields[$key])) {
+                continue;
             }
+
+            $type = $fields[$key]['type'] ?? 'text';
+
+            $sanitized[$key] = match ($type) {
+                // '0', nao string vazia: vazio significa "nunca configurado,
+                // usar o default" em resolved_config() -- se usassemos vazio
+                // aqui, desmarcar um checkbox default=true nao teria efeito.
+                'checkbox' => $value ? '1' : '0',
+                'number' => (string) (is_numeric($value) ? $value : 0),
+                default => sanitize_text_field((string) $value),
+            };
         }
 
         return $sanitized;
@@ -134,7 +145,7 @@ final class ModulesController
             'status' => $module->status(),
             'enabled' => $this->settings->is_enabled($slug),
             'fields' => $this->fields_to_array($module->fields()),
-            'config' => $this->settings->get_config($slug),
+            'config' => $module->resolved_config(),
             'stats' => $this->stats_to_array($module->metrics(), $stats),
         ];
     }

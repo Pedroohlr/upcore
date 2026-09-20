@@ -27,9 +27,10 @@ abstract class Module
 
     /**
      * Campos de configuracao que este modulo expoe no painel (ex: chave de
-     * API). A maioria dos modulos nao precisa de nenhum.
+     * API, numero maximo de tentativas). A maioria dos modulos nao precisa
+     * de nenhum. Tipos suportados: text, password, number, checkbox.
      *
-     * @return array<string, array{label: string, type: string, description?: string}>
+     * @return array<string, array{label: string, type: string, description?: string, default?: mixed}>
      */
     public function fields(): array
     {
@@ -45,6 +46,43 @@ abstract class Module
     public function metrics(): array
     {
         return [];
+    }
+
+    /**
+     * Config atual do modulo, ja resolvida com o valor padrao de cada campo
+     * (declarado em fields()) quando o projeto nunca configurou nada.
+     * checkbox vira bool, number vira float, o resto vira string.
+     *
+     * @return array<string, mixed>
+     */
+    public function resolved_config(): array
+    {
+        $stored = $this->settings->get_config($this->slug());
+        $resolved = [];
+
+        foreach ($this->fields() as $key => $field) {
+            $type = $field['type'] ?? 'text';
+            $default = $field['default'] ?? ($type === 'checkbox' ? false : '');
+
+            if (! array_key_exists($key, $stored) || $stored[$key] === '') {
+                $resolved[$key] = $default;
+
+                continue;
+            }
+
+            $resolved[$key] = match ($type) {
+                'checkbox' => in_array($stored[$key], ['1', 'true'], true),
+                'number' => is_numeric($stored[$key]) ? (float) $stored[$key] : $default,
+                default => (string) $stored[$key],
+            };
+        }
+
+        return $resolved;
+    }
+
+    protected function field(string $key): mixed
+    {
+        return $this->resolved_config()[$key] ?? null;
     }
 
     protected function config(string $key, string $default = ''): string

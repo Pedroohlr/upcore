@@ -33,13 +33,50 @@ final class CoreCleanupModule extends Module
         return self::STATUS_READY;
     }
 
+    public function fields(): array
+    {
+        return [
+            'remove_emoji' => [
+                'label' => __('Remover emojis do WordPress', 'upcore'),
+                'type' => 'checkbox',
+                'default' => true,
+            ],
+            'remove_oembed_discovery' => [
+                'label' => __('Remover links de descoberta de oEmbed', 'upcore'),
+                'type' => 'checkbox',
+                'description' => __('Nao afeta o consumo de embeds de terceiros no conteudo.', 'upcore'),
+                'default' => true,
+            ],
+            'remove_dashicons_for_visitors' => [
+                'label' => __('Remover dashicons para visitantes deslogados', 'upcore'),
+                'type' => 'checkbox',
+                'default' => true,
+            ],
+            'remove_head_bloat' => [
+                'label' => __('Remover metadados soltos no head (shortlink, link da REST API)', 'upcore'),
+                'type' => 'checkbox',
+                'default' => true,
+            ],
+        ];
+    }
+
     public function register(): void
     {
-        $this->remove_emoji();
-        $this->remove_oembed_discoverability();
-        $this->remove_head_bloat();
+        if ($this->field('remove_emoji')) {
+            $this->remove_emoji();
+        }
 
-        add_action('wp_enqueue_scripts', [$this, 'dequeue_dashicons_for_visitors'], 100);
+        if ($this->field('remove_oembed_discovery')) {
+            $this->remove_oembed_discoverability();
+        }
+
+        if ($this->field('remove_head_bloat')) {
+            $this->remove_head_bloat();
+        }
+
+        if ($this->field('remove_dashicons_for_visitors')) {
+            add_action('wp_enqueue_scripts', [$this, 'dequeue_dashicons_for_visitors'], 100);
+        }
     }
 
     private function remove_emoji(): void

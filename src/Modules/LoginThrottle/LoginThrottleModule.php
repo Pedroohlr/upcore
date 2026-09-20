@@ -10,11 +10,11 @@ use WP_Error;
 
 final class LoginThrottleModule extends Module
 {
-    private const MAX_LOGIN_ATTEMPTS = 5;
-    private const LOGIN_LOCKOUT_WINDOW = 15 * MINUTE_IN_SECONDS;
+    private const DEFAULT_MAX_LOGIN_ATTEMPTS = 5;
+    private const DEFAULT_LOGIN_LOCKOUT_MINUTES = 15;
 
-    private const MAX_RESET_ATTEMPTS = 3;
-    private const RESET_LOCKOUT_WINDOW = 30 * MINUTE_IN_SECONDS;
+    private const DEFAULT_MAX_RESET_ATTEMPTS = 3;
+    private const DEFAULT_RESET_LOCKOUT_MINUTES = 30;
 
     public function slug(): string
     {
@@ -39,6 +39,32 @@ final class LoginThrottleModule extends Module
     public function status(): string
     {
         return self::STATUS_READY;
+    }
+
+    public function fields(): array
+    {
+        return [
+            'max_login_attempts' => [
+                'label' => __('Max. tentativas de login', 'upcore'),
+                'type' => 'number',
+                'default' => self::DEFAULT_MAX_LOGIN_ATTEMPTS,
+            ],
+            'login_lockout_minutes' => [
+                'label' => __('Bloqueio de login apos exceder (minutos)', 'upcore'),
+                'type' => 'number',
+                'default' => self::DEFAULT_LOGIN_LOCKOUT_MINUTES,
+            ],
+            'max_reset_attempts' => [
+                'label' => __('Max. solicitacoes de recuperacao de senha', 'upcore'),
+                'type' => 'number',
+                'default' => self::DEFAULT_MAX_RESET_ATTEMPTS,
+            ],
+            'reset_lockout_minutes' => [
+                'label' => __('Bloqueio de recuperacao apos exceder (minutos)', 'upcore'),
+                'type' => 'number',
+                'default' => self::DEFAULT_RESET_LOCKOUT_MINUTES,
+            ],
+        ];
     }
 
     public function metrics(): array
@@ -81,7 +107,7 @@ final class LoginThrottleModule extends Module
     public function register_failed_login(string $username): void
     {
         Stats::record($this->slug(), 'failed_attempts');
-        $this->register_attempt($this->login_key(), self::LOGIN_LOCKOUT_WINDOW);
+        $this->register_attempt($this->login_key(), $this->minutes_to_seconds('login_lockout_minutes', self::DEFAULT_LOGIN_LOCKOUT_MINUTES));
     }
 
     /**
@@ -100,7 +126,7 @@ final class LoginThrottleModule extends Module
             return;
         }
 
-        $this->register_attempt($this->reset_key(), self::RESET_LOCKOUT_WINDOW);
+        $this->register_attempt($this->reset_key(), $this->minutes_to_seconds('reset_lockout_minutes', self::DEFAULT_RESET_LOCKOUT_MINUTES));
     }
 
     private function is_locked_out(string $key): bool
@@ -120,11 +146,24 @@ final class LoginThrottleModule extends Module
     /** @return array{0: int, 1: int} */
     private function state_for_key(string $key): array
     {
-        $limit = str_starts_with($key, 'upcore_reset_')
-            ? self::MAX_RESET_ATTEMPTS
-            : self::MAX_LOGIN_ATTEMPTS;
+        $is_reset_key = str_starts_with($key, 'upcore_reset_');
+        $limit = $is_reset_key
+            ? $this->int_field('max_reset_attempts', self::DEFAULT_MAX_RESET_ATTEMPTS)
+            : $this->int_field('max_login_attempts', self::DEFAULT_MAX_LOGIN_ATTEMPTS);
 
-        return [(int) get_transient($key), $limit];
+        return [(int) get_transient($key), max(1, $limit)];
+    }
+
+    private function int_field(string $key, int $default): int
+    {
+        $value = $this->field($key);
+
+        return is_numeric($value) ? (int) $value : $default;
+    }
+
+    private function minutes_to_seconds(string $key, int $default): int
+    {
+        return max(1, $this->int_field($key, $default)) * MINUTE_IN_SECONDS;
     }
 
     private function login_key(): string

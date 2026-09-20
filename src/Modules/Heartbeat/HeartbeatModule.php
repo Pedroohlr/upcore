@@ -36,6 +36,18 @@ final class HeartbeatModule extends Module
         return self::STATUS_READY;
     }
 
+    public function fields(): array
+    {
+        return [
+            'interval_seconds' => [
+                'label' => __('Intervalo fora do editor (segundos)', 'upcore'),
+                'type' => 'number',
+                'description' => __('Entre 15 e 300. Padrao 60.', 'upcore'),
+                'default' => self::SLOWED_INTERVAL,
+            ],
+        ];
+    }
+
     public function register(): void
     {
         add_filter('heartbeat_settings', [$this, 'slow_down_outside_editor']);
@@ -51,9 +63,17 @@ final class HeartbeatModule extends Module
             return $settings;
         }
 
-        $settings['interval'] = self::SLOWED_INTERVAL;
+        $settings['interval'] = $this->interval();
 
         return $settings;
+    }
+
+    private function interval(): int
+    {
+        $value = $this->field('interval_seconds');
+        $interval = is_numeric($value) ? (int) $value : self::SLOWED_INTERVAL;
+
+        return max(15, min(300, $interval));
     }
 
     private function is_post_edit_screen(): bool

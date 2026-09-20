@@ -34,6 +34,18 @@ final class XmlRpcModule extends Module
         return self::STATUS_READY;
     }
 
+    public function fields(): array
+    {
+        return [
+            'allow_anyway' => [
+                'label' => __('Permitir XML-RPC mesmo assim', 'upcore'),
+                'type' => 'checkbox',
+                'description' => __('Use apenas se algum projeto depender de XML-RPC (ex: Jetpack, apps de post mobile).', 'upcore'),
+                'default' => false,
+            ],
+        ];
+    }
+
     public function metrics(): array
     {
         return [
@@ -78,6 +90,10 @@ final class XmlRpcModule extends Module
 
     private function is_allowed_by_override(): bool
     {
-        return defined('UPCORE_XMLRPC_ALLOWED') && UPCORE_XMLRPC_ALLOWED === true;
+        if (defined('UPCORE_XMLRPC_ALLOWED') && UPCORE_XMLRPC_ALLOWED === true) {
+            return true;
+        }
+
+        return (bool) $this->field('allow_anyway');
     }
 }

@@ -36,6 +36,17 @@ final class RevisionsModule extends Module
         return self::STATUS_READY;
     }
 
+    public function fields(): array
+    {
+        return [
+            'max_revisions' => [
+                'label' => __('Numero maximo de revisoes por conteudo', 'upcore'),
+                'type' => 'number',
+                'default' => self::DEFAULT_LIMIT,
+            ],
+        ];
+    }
+
     public function register(): void
     {
         add_filter('wp_revisions_to_keep', [$this, 'limit_revisions'], 10, 2);
@@ -43,6 +54,8 @@ final class RevisionsModule extends Module
 
     public function limit_revisions(int $num, WP_Post $post): int
     {
-        return self::DEFAULT_LIMIT;
+        $value = $this->field('max_revisions');
+
+        return max(0, is_numeric($value) ? (int) $value : self::DEFAULT_LIMIT);
     }
 }
