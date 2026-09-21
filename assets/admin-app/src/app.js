@@ -44,8 +44,12 @@ export default function App() {
 
 		try {
 			applyUpdate( await updateModule( slug, { config } ) );
+
+			return true;
 		} catch ( err ) {
 			setError( err?.message ?? 'Nao foi possivel salvar a configuracao.' );
+
+			return false;
 		} finally {
 			setSavingConfigSlug( null );
 		}

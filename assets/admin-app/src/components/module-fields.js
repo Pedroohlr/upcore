@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { asObject } from '../utils';
 
 function FieldInput( { field, value, onChange } ) {
@@ -22,19 +22,18 @@ function FieldInput( { field, value, onChange } ) {
 		);
 	}
 
+	const inputType =
+		field.type === 'password' || field.type === 'number'
+			? field.type
+			: 'text';
+
 	return (
 		<label className="upcore-field">
 			<span className="upcore-field__label">{ field.label }</span>
 			<input
-				type={ field.type === 'password' ? 'password' : field.type === 'number' ? 'number' : 'text' }
+				type={ inputType }
 				value={ value ?? '' }
-				onChange={ ( event ) =>
-					onChange(
-						field.type === 'number'
-							? event.target.value
-							: event.target.value
-					)
-				}
+				onChange={ ( event ) => onChange( event.target.value ) }
 			/>
 			{ field.description && (
 				<span className="upcore-field__description">
@@ -49,18 +48,17 @@ export default function ModuleFields( { fields, config, onSave, saving } ) {
 	const [ values, setValues ] = useState( () => ( { ...asObject( config ) } ) );
 	const [ dirty, setDirty ] = useState( false );
 
-	useEffect( () => {
-		setValues( { ...asObject( config ) } );
-		setDirty( false );
-	}, [ config ] );
-
 	function handleChange( key, value ) {
 		setValues( ( current ) => ( { ...current, [ key ]: value } ) );
 		setDirty( true );
 	}
 
-	function handleSave() {
-		onSave( values );
+	async function handleSave() {
+		const success = await onSave( values );
+
+		if ( success !== false ) {
+			setDirty( false );
+		}
 	}
 
 	return (

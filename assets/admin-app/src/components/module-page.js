@@ -53,6 +53,7 @@ export default function ModulePage( {
 				<div className="upcore-page__section">
 					<h2>Configuracao</h2>
 					<ModuleFields
+						key={ module.slug }
 						fields={ module.fields }
 						config={ module.config }
 						saving={ savingConfig }
